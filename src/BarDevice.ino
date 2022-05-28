@@ -21,13 +21,22 @@ pin_t LED_PIN = D5;
 
 MMA8452Q accel;
 
-float scaleFactor = 62.0/3;
+float scaleFactor = display.height()/2.0;
 
 void drawAxis() {
   // Draw Y-axis
   display.drawLine(0,0,0,display.height()-2,WHITE);
   // Draw X-axis
   display.drawLine(0,display.height()-2,display.width(),display.height()-2,WHITE);
+
+  // Draw constant line
+  int i;
+  for (i=2; i<display.width()-4; i++){
+    if(i%3 != 0){
+      display.drawPixel(i,1*scaleFactor,WHITE);
+    }
+  }
+
   display.display();
 }
 // Assume device starts flat
@@ -58,7 +67,7 @@ void loop()
   // Declare variables
   float pitchRawNew;
   float pitchFiltered;
-  float zAccelAbs;
+  float magAccel;
   system_tick_t timeCurrent;
   int y;
   int dt;
@@ -67,13 +76,11 @@ void loop()
     if (accel.available()) {
       // To update acceleration values from the accelerometer, call accel.read();
       accel.read();
-      
       // Calculate pitch based off acceleration of x-axis and z-axis
       // Note: convert from radians to degrees for readability
       pitchRawNew = atan2(accel.cx,accel.cz)*180.0/PI;
       // Fault tolerance: Filter out vibrations with a low pass filter
       pitchFiltered = 0.95*pitchFilteredOld + 0.05*pitchRawNew;
-      //Log.info("Pitch: %f", pitchFiltered);
       if (abs(pitchFiltered)>20) {
         digitalWrite(LED_PIN, HIGH);
       }
@@ -82,11 +89,10 @@ void loop()
       }
       pitchFilteredOld=pitchFiltered;
 
-      zAccelAbs = fabs(accel.cz-1);
+      magAccel = sqrt(pow(accel.cx,2)+pow(accel.cy,2)+pow(accel.cz,2));
       timeCurrent = millis();
       dt = (int)timeCurrent - (int)timeInit;
-      y = display.height()-floor(zAccelAbs*scaleFactor)-2;
-      Log.info("dt: %d, zAccelAbs: %f, pitchScaled: %f, y: %d", dt, zAccelAbs, zAccelAbs*scaleFactor,y);
+      y = display.height()-floor(magAccel*scaleFactor)-2;
       if (dt<=display.width()-4){
         display.drawLine(dtOld,yOld,dt,y,WHITE);
         //display.drawPixel(dt,y,WHITE);
