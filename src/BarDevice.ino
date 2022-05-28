@@ -14,14 +14,24 @@
 #define OLED_CS     A5
 #define OLED_RESET  A0
 
+SYSTEM_THREAD(ENABLED);
+SerialLogHandler logHandler;
+
 Adafruit_SH1106 display(OLED_DC, OLED_RESET, OLED_CS);
 
-SerialLogHandler logHandler;
 pin_t LED_PIN = D5;
 
 MMA8452Q accel;
 
 float scaleFactor = display.height()/2.0;
+
+// Assume device starts flat
+float pitchFilteredOld=0;
+float pitchFiltered;
+system_tick_t timeInit=millis();
+int dtOld = 0;
+int yOld = display.height()-2;
+
 
 void drawAxis() {
   // Draw Y-axis
@@ -39,11 +49,36 @@ void drawAxis() {
 
   display.display();
 }
-// Assume device starts flat
-float pitchFilteredOld=0;
-system_tick_t timeInit=millis();
-int dtOld = 0;
-int yOld = display.height()-2;
+
+// Set up BLE Parameters -------------
+void updateAdvertisingData(bool updateOnly)
+{
+  uint8_t buf[BLE_MAX_ADV_DATA_LEN];
+  size_t offset = 0;
+  
+  // Random ID 
+  buf[offset++] = 0xff;
+  buf[offset++] = 0xff;
+  // Internal packet type. This is arbitrary, but provides an extra
+  // check to make sure the data is your data
+  buf[offset++] = 0x42;
+  // Copy the filtered pitch into the buffer
+  memcpy(&buf[offset], &pitchFiltered, 4);
+  offset += 4;
+  BleAdvertisingData advData;
+  advData.appendCustomData(buf, offset);
+  if (updateOnly)
+  {
+    // Only update data
+    BLE.setAdvertisingData(&advData);
+  }
+  else
+  {
+    BLE.setAdvertisingInterval(130);
+    BLE.advertise(&advData);
+  }
+}
+// -----------------------------------
 
 void setup()
 {
@@ -59,14 +94,15 @@ void setup()
   display.clearDisplay();
   drawAxis();
   
-  accel.begin(SCALE_2G, ODR_400);
+  accel.begin(SCALE_2G, ODR_800);
+
+  updateAdvertisingData(false);
 }
 
 void loop()
 {
   // Declare variables
   float pitchRawNew;
-  float pitchFiltered;
   float magAccel;
   system_tick_t timeCurrent;
   int y;
@@ -76,6 +112,10 @@ void loop()
     if (accel.available()) {
       // To update acceleration values from the accelerometer, call accel.read();
       accel.read();
+      
+      //------------------------------------------------------------------
+      // PITCH CALCULATION
+      //------------------------------------------------------------------
       // Calculate pitch based off acceleration of x-axis and z-axis
       // Note: convert from radians to degrees for readability
       pitchRawNew = atan2(accel.cx,accel.cz)*180.0/PI;
@@ -87,7 +127,13 @@ void loop()
       else {
         digitalWrite(LED_PIN, LOW);
       }
+
+      // Advertise to BLE if connected
+      updateAdvertisingData(true);
+
       pitchFilteredOld=pitchFiltered;
+      //------------------------------------------------------------------
+      
 
       magAccel = sqrt(pow(accel.cx,2)+pow(accel.cy,2)+pow(accel.cz,2));
       timeCurrent = millis();
@@ -109,7 +155,7 @@ void loop()
         dtOld=2;
         yOld=y;
       }
-    }
+  }
 
 	// No need to delay, since our ODR is set to 1Hz, accel.available() will only return 1
 	// about once per second.
