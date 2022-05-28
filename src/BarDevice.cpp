@@ -39,8 +39,12 @@ float scaleFactor = display.height()/2.0;
 // Assume device starts flat
 float pitchFilteredOld=0;
 float pitchFiltered;
-system_tick_t timeInit=millis();
-int dtOld = 0;
+system_tick_t timeOrigin=millis();
+system_tick_t timeBatchStart=millis();
+float batchSum=0;
+float batchMean=0;
+int batchSize=0;
+int xOld = 0;
 int yOld = display.height()-2;
 
 
@@ -116,6 +120,7 @@ void loop()
   float pitchRawNew;
   float magAccel;
   system_tick_t timeCurrent;
+  int x;
   int y;
   int dt;
 
@@ -148,24 +153,58 @@ void loop()
 
       magAccel = sqrt(pow(accel.cx,2)+pow(accel.cy,2)+pow(accel.cz,2));
       timeCurrent = millis();
-      dt = (int)timeCurrent - (int)timeInit;
-      y = display.height()-floor(magAccel*scaleFactor)-2;
-      if (dt<=display.width()-4){
-        display.drawLine(dtOld,yOld,dt,y,WHITE);
-        //display.drawPixel(dt,y,WHITE);
-        display.display();
-        dtOld=dt;
-        yOld=y;
+      dt = (int)timeCurrent - (int)timeOrigin;
+      if (dt<=3968){
+        if((int)timeCurrent - (int)timeBatchStart <= 32){
+          batchSum += magAccel;
+          batchSize += 1;
+        }
+        else {
+          // Calculate mean of batch if over 32ms
+          batchMean = batchSum/batchSize;
+          x = floor(dt/32.0);
+          y = display.height()-floor(batchMean*scaleFactor)-2;
+          display.drawLine(xOld,yOld,x,y,WHITE);
+          display.display();
+          batchSum=0;
+          batchSize=0;
+          xOld = x;
+          yOld = y;
+          timeBatchStart = timeCurrent;
+        }
       }
       else{
+        batchMean = batchSum/batchSize;
+        y = display.height()-floor(batchMean*scaleFactor)-2;
+
         display.clearDisplay();
         drawAxis();
-        display.drawPixel(2,y,WHITE);
-        display.display();
-        timeInit=timeCurrent;
-        dtOld=2;
+
+        batchSum=0;
+        batchSize=0;
+        xOld=0;
         yOld=y;
+        timeBatchStart=timeCurrent;
+        timeOrigin=timeCurrent;
       }
+
+      // y = display.height()-floor(magAccel*scaleFactor)-2;
+      // if (dt<=display.width()-4){
+      //   display.drawLine(dtOld,yOld,dt,y,WHITE);
+      //   //display.drawPixel(dt,y,WHITE);
+      //   display.display();
+      //   dtOld=dt;
+      //   yOld=y;
+      // }
+      // else{
+      //   display.clearDisplay();
+      //   drawAxis();
+      //   display.drawPixel(2,y,WHITE);
+      //   display.display();
+      //   timeOrigin=timeCurrent;
+      //   dtOld=2;
+      //   yOld=y;
+      // }
   }
 
 	// No need to delay, since our ODR is set to 1Hz, accel.available() will only return 1
