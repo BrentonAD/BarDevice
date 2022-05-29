@@ -1,8 +1,7 @@
 /*
  * Project BarDevice
- * Description:
- * Author:
- * Date:
+ * Description: Firmware for bar mounted device, measuring acceleration and pitch
+ * Author: Brenton Adey @BrentonAD
  */
 
 #include <math.h>
@@ -176,26 +175,8 @@ void loop()
         timeBatchStart=timeCurrent;
         timeOrigin=timeCurrent;
       }
-
-      // y = display.height()-floor(magAccel*scaleFactor)-2;
-      // if (dt<=display.width()-4){
-      //   display.drawLine(dtOld,yOld,dt,y,WHITE);
-      //   //display.drawPixel(dt,y,WHITE);
-      //   display.display();
-      //   dtOld=dt;
-      //   yOld=y;
-      // }
-      // else{
-      //   display.clearDisplay();
-      //   drawAxis();
-      //   display.drawPixel(2,y,WHITE);
-      //   display.display();
-      //   timeOrigin=timeCurrent;
-      //   dtOld=2;
-      //   yOld=y;
-      // }
   }
 
-	// No need to delay, since our ODR is set to 1Hz, accel.available() will only return 1
-	// about once per second.
+	// No need to delay, since our ODR is set to 800Hz, accel.available() will only return 1
+	// about 800 times per second.
 }
