@@ -20,16 +20,17 @@ void loop();
 #line 10 "c:/Users/brent/OneDrive/Documents/_UNIVERSITY/_MASTEROFAI/2022Tri1/SIT730-EmbeddedSystemDevelopment/Project/ParticleFirmware/BarDevice/src/BarDevice.ino"
 #define PI 3.141592654
 
-#define OLED_DC     A4
-#define OLED_CS     A5
-#define OLED_RESET  A0
+#define OLED_DC     D7
+#define OLED_CS     D3
+#define OLED_RESET  D5
 
+SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 SerialLogHandler logHandler;
 
 Adafruit_SH1106 display(OLED_DC, OLED_RESET, OLED_CS);
 
-pin_t LED_PIN = D5;
+pin_t LED_PIN = A5;
 
 MMA8452Q accel;
 
